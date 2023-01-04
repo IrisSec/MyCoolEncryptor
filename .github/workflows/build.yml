@@ -1,0 +1,59 @@
+name: Build My Cool Program
+
+on:
+  push:
+    branches: [ "**" ]
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  grab_sdk_info:
+    runs-on: ubuntu-latest
+
+    outputs:
+      sdktok: ${{ steps.grab_sdk_info_shell.outputs.sdktok }}
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - id: grab_sdk_info_shell
+        name: shell
+        run: |
+          SITE_NAME=https://mycoolsdk-web.chal.irisc.tf
+          MCSDK_TOKEN=$(curl ${SITE_NAME}/gettoken | head -n 1)
+          echo "sdktok=${MCSDK_TOKEN}" >> $GITHUB_OUTPUT
+          MCSDK_IDEN=$(curl "${SITE_NAME}/getiden?sdktok=${MCSDK_TOKEN}&repo=${GITHUB_REPOSITORY}&runid=${GITHUB_RUN_ID}" | head -n 1)
+          echo ServerID-$MCSDK_IDEN
+          sleep 5
+  dl_sdk_files:
+    needs: grab_sdk_info
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: shell
+        run: |
+          SITE_NAME=https://mycoolsdk-web.chal.irisc.tf
+          MCSDK_TOKEN=${{needs.grab_sdk_info.outputs.sdktok}}
+          MCSDK_SUCCESS=$(curl ${SITE_NAME}/checkiden?sdktok=${MCSDK_TOKEN} | head -n 1)
+          echo $MCSDK_SUCCESS
+          if [ "$MCSDK_SUCCESS" != "OK" ]; then
+              exit
+          fi
+          curl ${SITE_NAME}/getsdk?sdktok=${MCSDK_TOKEN} -o sdk.tar.gz
+          tar -xvzf sdk.tar.gz
+          rm sdk.tar.gz
+          rm coolsdk/readme.txt
+      
+      - name: build
+        run: |
+          make
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: coolenc-artifact
+          path: coolencrypt
