@@ -24,7 +24,7 @@ void encrypt() {
 }
 
 void decrypt() {
-    printf("Type the message to decrypt: ");
+    printf("Type the message to decrypt L: ");
     
     char input[9001];
     scanf(" %9000[^\n]", input);
